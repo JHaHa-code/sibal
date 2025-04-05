@@ -1,0 +1,145 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>배재현</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 80%;
+            margin: 20px auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .error {
+            color: red;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>화봉고 나이스api 급식정보 가져오기</h1>
+        <div id="error-message" class="error"></div>
+        <table id="meal-info-table">
+            <thead>
+                <tr>
+                    <th>학교 이름</th>
+                    <th>급식 날짜</th>
+                    <th>요리명</th>
+                    <th>칼로리</th>
+                    <th>영양 정보</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // 날짜 범위 체킹 로직
+        function getNextWeekDates() {
+            const today = new Date();
+            const startDate = new Date(today);
+            startDate.setDate(today.getDate() + 1); // 1일 후부터 시작
+
+            const endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + 6); // 6일 후까지 지속
+
+            const formatDate = date => {
+                const year = date.getFullYear();
+                const month = ('0' + (date.getMonth() + 1)).slice(-2);
+                const day = ('0' + date.getDate()).slice(-2);
+                return `${year}${month}${day}`;
+            };
+
+            return [formatDate(startDate), formatDate(endDate)];
+        }
+
+        // api 정보받아서 표시하는 로직
+        function fetchMealData() {
+            const [startDate, endDate] = getNextWeekDates();
+
+            const url = "https://open.neis.go.kr/hub/mealServiceDietInfo";
+            const serviceKey = "2b8eff850bc04d33865074688ffb0697";
+
+            const params = {
+                KEY: serviceKey,
+                Type: "json",
+                pIndex: "1",
+                pSize: "100",
+                ATPT_OFCDC_SC_CODE: "H10",
+                SD_SCHUL_CODE: "7480171",
+                MLSV_FROM_YMD: startDate,
+                MLSV_TO_YMD: endDate
+            };
+
+            // 쿼리 문자열 생성
+            const queryString = new URLSearchParams(params).toString();
+            const apiUrl = `${url}?${queryString}`;
+
+            // 데이터 요청
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    const meals = data.mealServiceDietInfo ? data.mealServiceDietInfo[1].row : [];
+                    displayMeals(meals);
+                })
+                .catch(error => {
+                    console.error("데이터 요청 오류:", error);
+                    document.getElementById("error-message").textContent = "데이터를 가져오는 데 실패했습니다. 나중에 다시 시도해 주세요.";
+                });
+        }
+
+        // 급식 데이터를 테이블에 표시하는 함수
+        function displayMeals(meals) {
+            const tableBody = document.getElementById("meal-info-table").getElementsByTagName("tbody")[0];
+
+            meals.forEach(meal => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>${meal.SCHUL_NM}</td>
+                    <td>${meal.MLSV_YMD}</td>
+                    <td>${meal.DDISH_NM}</td>
+                    <td>${meal.CAL_INFO || '정보 없음'}</td>
+                    <td>${meal.NTR_INFO || '정보 없음'}</td>
+                `;
+            });
+        }
+
+        // 페이지가 로드될 때 급식 데이터를 자동으로 가져옴
+        window.onload = fetchMealData;
+    </script>
+</body>
+</html>
